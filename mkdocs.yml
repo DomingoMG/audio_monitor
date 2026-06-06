@@ -1,13 +1,79 @@
 site_name: audio_monitor
 site_description: Flutter desktop plugin for live audio input monitoring.
+site_url: https://domingomg.github.io/audio_monitor/
+repo_url: https://github.com/DomingoMG/audio_monitor
+repo_name: DomingoMG/audio_monitor
+edit_uri: edit/main/doc/
+
+docs_dir: doc
+site_dir: site
+strict: true
 
 theme:
   name: material
+  language: en
+  features:
+    - navigation.instant
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - navigation.expand
+    - toc.follow
+    - content.code.copy
+    - search.suggest
+    - search.highlight
+  palette:
+    - scheme: default
+      primary: green
+      accent: teal
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - scheme: slate
+      primary: green
+      accent: teal
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  icon:
+    repo: fontawesome/brands/github
 
 nav:
-  - Overview: doc/index.md
-  - Installation: doc/installation.md
-  - API: doc/api.md
-  - Architecture: doc/architecture.md
-  - Changelog: doc/changelog.md
-  - Roadmap: doc/roadmap.md
+  - Home: index.md
+  - Installation: installation.md
+  - API: api.md
+  - Architecture: architecture.md
+  - Changelog: changelog.md
+  - Roadmap: roadmap.md
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/DomingoMG/audio_monitor
+    - icon: fontawesome/solid/book
+      link: https://domingomg.github.io/audio_monitor/
+
+copyright: Copyright &copy; 2026 DomingoMG
