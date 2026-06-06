@@ -1,0 +1,13 @@
+site_name: audio_monitor
+site_description: Flutter desktop plugin for live audio input monitoring.
+
+theme:
+  name: material
+
+nav:
+  - Overview: doc/index.md
+  - Installation: doc/installation.md
+  - API: doc/api.md
+  - Architecture: doc/architecture.md
+  - Changelog: doc/changelog.md
+  - Roadmap: doc/roadmap.md
