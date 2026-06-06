@@ -1,6 +1,8 @@
 name: audio_monitor
 description: "Flutter desktop plugin for live audio input monitoring."
 version: 0.0.1
+homepage: https://domingomg.github.io/audio_monitor/
+repository: https://github.com/DomingoMG/audio_monitor
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
