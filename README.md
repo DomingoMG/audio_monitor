@@ -10,6 +10,8 @@ Example flow:
 
 `Microphone / Line In / Audio Interface Input -> Headphones / Speakers / Output Device`
 
+![audio_monitor macOS example UI](doc/assets/images/macos.png)
+
 ## Official documentation
 
 The full documentation website for this repository is available at:
@@ -23,6 +25,7 @@ Use the documentation site for:
 - API reference
 - architecture notes
 - release notes and roadmap
+- screenshots and usage guidance
 
 ## Key capabilities
 

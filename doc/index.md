@@ -8,6 +8,8 @@ Example flow:
 
 `Microphone / Line In / Audio Interface Input -> Headphones / Speakers / Output`
 
+![audio_monitor macOS example UI](assets/images/macos.png)
+
 ## What It Does
 
 - Lists available input devices.
