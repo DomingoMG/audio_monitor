@@ -1,53 +1,60 @@
 # audio_monitor
 
-`audio_monitor` is a Flutter desktop plugin for live audio input monitoring.
+[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-0A7EA4)](https://domingomg.github.io/audio_monitor/)
 
-It lets a Flutter app select an input device and monitor that input through an output device in real time.
+A Flutter desktop plugin for live audio input monitoring on desktop platforms.
+
+`audio_monitor` lets a Flutter app select an input device and monitor that signal through an output path in real time.
 
 Example flow:
 
 `Microphone / Line In / Audio Interface Input -> Headphones / Speakers / Output Device`
 
-## What This Plugin Does
+## Official documentation
 
-- Lists available input audio devices.
-- Lists available output audio devices.
-- Starts live input monitoring.
-- Stops live input monitoring.
-- Mutes and unmutes the live monitor without tearing down the session.
-- Adjusts a dedicated monitor playback volume for the live monitor path.
-- Exposes the current monitoring state.
+The full documentation website for this repository is available at:
 
-## What This Plugin Does Not Do
+- [domingomg.github.io/audio_monitor](https://domingomg.github.io/audio_monitor/)
 
-- It is not an audio meter.
-- It does not record audio.
-- It does not store audio.
-- It does not write audio files.
-- It does not provide FFT, waveform, RMS, or peak analysis.
-- It does not replace `system_audio_meter`.
+Use the documentation site for:
 
-## Platform Support
+- installation and platform setup
+- macOS permissions and requirements
+- API reference
+- architecture notes
+- release notes and roadmap
 
-| Platform | Device listing | Input monitoring | Output selection |
-| --- | --- | --- | --- |
-| macOS | Implemented | Implemented | Partial |
-| Windows | Planned | Planned | Planned |
-| Linux | Not supported yet | Not supported yet | Not supported yet |
+## Key capabilities
 
-macOS notes:
+- Input device enumeration
+- Output device enumeration
+- Live desktop input monitoring
+- Monitor mute and unmute without tearing down the session
+- Dedicated monitor playback volume
+- Current monitoring state from Flutter
 
-- The current macOS implementation targets `selected input -> system default output`.
-- Real-world latency still depends on the selected hardware, driver buffer sizes, and microphone permissions.
+## Important scope
 
-Windows notes:
+This plugin is intentionally focused on live monitoring and routing.
 
-- Windows is intentionally a placeholder for now.
-- The planned backend will target the native Windows listen-to-device monitoring behavior where possible.
+- It does **not** record audio
+- It does **not** persist audio buffers
+- It does **not** generate FFT data
+- It does **not** generate waveforms
+- It does **not** provide RMS or peak metering
+- It does **not** replace `system_audio_meter`
+
+## Platform support
+
+| Platform | Status | Notes |
+| --- | --- | --- |
+| macOS | Supported | Current backend targets `selected input -> system default output` |
+| Windows | Planned | Intended to align with native listen-to-device behavior |
+| Linux | Not supported yet | Deferred for a future release |
 
 ## Installation
 
-Add the plugin to `pubspec.yaml`:
+Add the dependency:
 
 ```yaml
 dependencies:
@@ -61,7 +68,7 @@ Then run:
 flutter pub get
 ```
 
-## Basic Usage
+## Quick start
 
 ```dart
 import 'package:audio_monitor/audio_monitor.dart';
@@ -71,22 +78,23 @@ final monitor = AudioMonitor();
 final inputs = await monitor.getInputDevices();
 final outputs = await monitor.getOutputDevices();
 
+await monitor.setVolume(0.5);
+
 await monitor.start(
   inputDeviceId: inputs.first.id,
   outputDeviceId: outputs.first.id,
 );
 
-final active = await monitor.isMonitoring();
-final state = await monitor.getState();
-
 await monitor.mute();
 await monitor.unmute();
-await monitor.setVolume(0.5);
+
+final active = await monitor.isMonitoring();
+final state = await monitor.getState();
 
 await monitor.stop();
 ```
 
-`setVolume()` can also be called before `start()`, so the monitor begins with the desired playback level.
+`setVolume()` can also be called before `start()`, so the monitoring session begins with the desired playback level.
 
 ## Public API
 
@@ -116,42 +124,21 @@ Native failures are surfaced as `AudioMonitorException` with one of these codes:
 - `platformNotSupported`
 - `nativeAudioError`
 
-## macOS Permissions
+## macOS host app requirements
 
-The macOS host app must include:
+If your Flutter app uses this plugin on macOS, review the full setup guide in the official docs. At minimum, host applications must declare the microphone privacy key, and sandboxed apps also need the correct audio-input entitlement.
 
-```xml
-<key>NSMicrophoneUsageDescription</key>
-<string>Audio Monitor needs microphone access to route the selected input device to your speakers or headphones in real time.</string>
-```
+Documentation:
 
-The example app already includes this entry in:
-
-- `example/macos/Runner/Info.plist`
-
-If the macOS app is sandboxed, it must also include the microphone entitlement:
-
-```xml
-<key>com.apple.security.device.audio-input</key>
-<true/>
-```
+- [Installation guide](https://domingomg.github.io/audio_monitor/installation/)
+- [Architecture guide](https://domingomg.github.io/audio_monitor/architecture/)
 
 ## Limitations
 
-- The plugin is focused only on live monitoring and routing.
-- Near-zero latency is not physically possible, but the backend is tuned for low-latency live monitoring.
-- End-to-end latency still depends on the audio devices and macOS buffer configuration.
-- To hear monitoring through a specific speaker or headphones on macOS, set that device as the system default output first.
+- The current macOS backend routes monitoring to the current system default output.
+- Near-zero latency is not physically possible; end-to-end latency still depends on hardware and buffer sizes.
 - Windows and Linux are not implemented in this release.
 
-## Roadmap
+## Repository
 
-- Add direct selected-output routing on macOS beyond the current default-output path.
-- Add explicit resource disposal ergonomics if the API grows.
-- Implement a Windows backend around native listen-to-device behavior.
-- Evaluate Linux support later without widening scope prematurely.
-
-## Documentation
-
-- GitHub Pages docs source lives in `doc/`
-- Release notes live in `CHANGELOG.md`
+- [GitHub repository](https://github.com/DomingoMG/audio_monitor)
