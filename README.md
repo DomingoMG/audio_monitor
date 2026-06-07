@@ -35,8 +35,7 @@ Behavior depends on Windows endpoint property support and write access to the de
 
 ```yaml
 dependencies:
-  audio_monitor:
-    path: ../audio_monitor
+  audio_monitor: ^0.1.0
 ```
 
 Then run:

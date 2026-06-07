@@ -1,11 +1,8 @@
 name: audio_monitor
-description: "Flutter desktop plugin for live audio input monitoring."
-version: 0.0.1
+description: "Flutter plugin for controlling native Windows 'Listen to this device' audio monitoring."
+version: 0.1.0
 homepage: https://domingomg.github.io/audio_monitor/
 repository: https://github.com/DomingoMG/audio_monitor
-screenshots:
-  - description: macOS example app showing live input monitoring controls.
-    path: doc/assets/images/macos.png
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

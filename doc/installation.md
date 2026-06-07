@@ -4,8 +4,7 @@ Add the dependency:
 
 ```yaml
 dependencies:
-  audio_monitor:
-    path: ../audio_monitor
+  audio_monitor: ^0.1.0
 ```
 
 Install packages:

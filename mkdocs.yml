@@ -1,5 +1,5 @@
 site_name: audio_monitor
-site_description: Flutter desktop plugin for live audio input monitoring.
+site_description: Flutter plugin for controlling native Windows audio monitoring.
 site_url: https://domingomg.github.io/audio_monitor/
 repo_url: https://github.com/DomingoMG/audio_monitor
 repo_name: DomingoMG/audio_monitor

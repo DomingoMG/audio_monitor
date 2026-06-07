@@ -1,10 +1,13 @@
+## 0.1.0
+
+- Reworked the public Dart API around native Windows `Listen to this device` control.
+- Added typed input and output device models with Windows endpoint state support.
+- Added native Windows read and write support for listen configuration through endpoint properties.
+- Added output-device selection support, including the default playback device mode.
+- Added a Windows diagnostic endpoint property dump tool for development and driver troubleshooting.
+- Updated the example app for enable, disable, refresh, and output-selection workflows.
+- Refreshed README and `doc/` content to match the Windows-native feature set.
+
 ## 0.0.1
 
-- Added a typed Dart API for desktop audio monitoring.
-- Added macOS live monitoring from selected input to the current system default output.
-- Added monitor mute and unmute controls without tearing down the session.
-- Added dedicated monitor volume control, including pre-start configuration support.
-- Added example app controls for device selection, monitoring state, mute, and volume.
-- Added Dart tests for API behavior and method channel payloads.
-- Added documentation scaffolding for GitHub Pages under `doc/`.
-- Added MIT license text for the initial public release.
+- Initial Flutter desktop plugin structure for `audio_monitor`.

@@ -4,44 +4,54 @@
 
 `audio_monitor` is intentionally narrow in scope:
 
-- live input monitoring only
+- native Windows listen control only
+- no custom capture pipeline
+- no custom playback pipeline
 - no recording
 - no metering
-- no historical audio storage
+- no retained PCM buffers
 
 ## Dart Layer
 
 The public Flutter API is exposed through:
 
 - `AudioMonitor`
-- strongly typed models
-- `MethodChannel` commands
+- strongly typed device and configuration models
+- `MethodChannel` request and response calls
 
-No `EventChannel` is used because the current plugin behavior is request/response oriented.
+No `EventChannel` is used because the current feature set is configuration-oriented rather than stream-oriented.
 
-## Native macOS Layer
+## Native Windows Layer
 
-The macOS backend uses:
+The Windows backend uses:
 
-- Swift
-- CoreAudio
-- AudioUnit / HAL-based capture and playback
+- Core Audio endpoint enumeration through `IMMDeviceEnumerator`
+- endpoint metadata through `IMMDevice`, `IMMDeviceCollection`, and `IPropertyStore`
+- endpoint state values from `DEVICE_STATE_*`
+- native endpoint properties associated with `Listen to this device`
 
-Current signal path:
+The backend reads and writes endpoint properties for:
 
-`selected input -> native monitor pipeline -> system default output`
+- whether native listen is enabled
+- which render endpoint Windows should use for playback
 
-## Resource Handling
+## Configuration Model
 
-The native implementation:
+The plugin does not move audio itself.
 
-- allocates only the buffers required for real-time processing
-- avoids retaining raw historical audio
-- clears the ring buffer when muted
-- disposes audio units on stop and deinit
+Instead, it:
+
+1. enumerates capture and render endpoints
+2. resolves the selected endpoint ids
+3. reads or writes the relevant endpoint properties
+4. lets Windows own the actual audio path
+
+## Diagnostics
+
+The repository includes `audio_monitor_property_dump` for inspecting endpoint property values during development and troubleshooting.
+
+This is especially useful when validating behavior across different device drivers or Windows builds.
 
 ## Known Limitation
 
-Direct selected-output routing on macOS is the hardest unresolved part of the backend.
-
-The current implementation keeps the code organized so that richer output routing can be added later.
+This feature depends on native Windows endpoint property behavior. Some drivers or system configurations may refuse property-store writes or expose different behavior than the Sound Control Panel UI suggests.
