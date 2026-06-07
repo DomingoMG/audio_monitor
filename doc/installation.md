@@ -20,6 +20,8 @@ The Windows backend controls the operating system native `Listen to this device`
 
 It does not create a custom capture or playback pipeline.
 
+If you are validating driver-specific behavior or investigating endpoint property differences, use the diagnostic utility documented in [diagnostics.md](diagnostics.md).
+
 ## Quick verification
 
 ```dart

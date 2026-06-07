@@ -1,49 +1,51 @@
 # audio_monitor
 
-`audio_monitor` is a Flutter desktop plugin for live audio input monitoring.
+`audio_monitor` is a Flutter desktop plugin for controlling native audio monitoring features.
 
-It is designed for desktop apps that need to route a selected audio input to an output in real time.
+The current Windows implementation targets the operating system feature exposed in Sound Control Panel as:
 
-Example flow:
+`Recording > Microphone Properties > Listen > Listen to this device`
 
-`Microphone / Line In / Audio Interface Input -> Headphones / Speakers / Output`
-
-![audio_monitor macOS example UI](assets/images/macos.png)
+It is intended for desktop apps that need to enable, disable, inspect, and configure the native Windows monitoring path for a capture device.
 
 ## What It Does
 
-- Lists available input devices.
-- Lists available output devices.
-- Starts and stops live monitoring.
-- Mutes and unmutes the monitoring path.
-- Applies a dedicated monitor volume.
-- Exposes the current monitoring state to Flutter.
+- Lists available input devices
+- Lists available output devices
+- Reads native Windows listen configuration
+- Enables native `Listen to this device`
+- Disables native `Listen to this device`
+- Assigns a specific playback device or the default playback device
 
 ## What It Does Not Do
 
+- No custom audio capture loop
+- No custom audio render loop
+- No PCM processing
 - No recording
 - No file writing
-- No FFT
-- No waveform generation
-- No RMS or peak metering
-- No audio history persistence
+- No metering
 
 ## Platform Status
 
-| Platform | Device listing | Monitoring | Output selection |
-| --- | --- | --- | --- |
-| macOS | Implemented | Implemented | Partial |
-| Windows | Planned | Planned | Planned |
-| Linux | Not supported yet | Not supported yet | Not supported yet |
+| Platform | Native listen control | Notes |
+| --- | --- | --- |
+| Windows | Implemented | Uses endpoint property store behavior |
+| macOS | Not implemented for this API | Throws `unsupportedPlatform` |
+| Linux | Not implemented for this API | Throws `unsupportedPlatform` |
 
-## macOS Notes
+## Diagnostic Support
 
-- The current macOS backend targets `selected input -> system default output`.
-- To hear the monitor through a specific device, set that device as the system default output first.
-- The monitor volume is independent from the app API, but still depends on the device and macOS audio path.
+The repository includes a Windows diagnostic utility target called `audio_monitor_property_dump`.
+
+Use it when you need to inspect endpoint property values before and after changing `Listen to this device` manually in Windows.
+
+Read the dedicated guide here:
+
+- [Diagnostic tool](diagnostics.md)
 
 ## Next Steps
 
 - Read the [installation guide](installation.md)
 - See the [API guide](api.md)
-- Review the [roadmap](roadmap.md)
+- Review the [architecture notes](architecture.md)

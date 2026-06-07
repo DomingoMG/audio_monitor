@@ -42,6 +42,7 @@ nav:
   - Home: index.md
   - Installation: installation.md
   - API: api.md
+  - Diagnostics: diagnostics.md
   - Architecture: architecture.md
   - Changelog: changelog.md
   - Roadmap: roadmap.md
