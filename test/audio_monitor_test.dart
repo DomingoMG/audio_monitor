@@ -8,124 +8,123 @@ class MockAudioMonitorPlatform
     with MockPlatformInterfaceMixin
     implements AudioMonitorPlatform {
   @override
-  Future<List<AudioMonitorDevice>> getInputDevices() async {
+  Future<List<AudioInputDevice>> getInputDevices() async {
     return const [
-      AudioMonitorDevice(
+      AudioInputDevice(
         id: 'input-1',
-        name: 'Built-in Microphone',
+        name: 'Mic 1',
         isDefault: true,
-        type: AudioMonitorDeviceType.input,
+        state: AudioDeviceState.active,
       ),
     ];
   }
 
   @override
-  Future<List<AudioMonitorDevice>> getOutputDevices() async {
+  Future<List<AudioOutputDevice>> getOutputDevices() async {
     return const [
-      AudioMonitorDevice(
+      AudioOutputDevice(
         id: 'output-1',
-        name: 'Built-in Output',
+        name: 'Speakers 1',
         isDefault: true,
-        type: AudioMonitorDeviceType.output,
+        state: AudioDeviceState.active,
       ),
     ];
   }
 
   @override
-  Future<void> start({
+  Future<NativeListenConfiguration> getNativeListenConfiguration({
+    required String inputDeviceId,
+  }) async {
+    return const NativeListenConfiguration(
+      enabled: true,
+      outputDeviceId: 'output-1',
+      outputDeviceName: 'Speakers 1',
+      usesDefaultOutputDevice: false,
+    );
+  }
+
+  @override
+  Future<void> enableNativeListen({
     required String inputDeviceId,
     required String outputDeviceId,
   }) async {}
 
   @override
-  Future<void> stop() async {}
+  Future<void> disableNativeListen({
+    required String inputDeviceId,
+  }) async {}
 
   @override
-  Future<void> mute() async {}
-
-  @override
-  Future<void> unmute() async {}
-
-  @override
-  Future<bool> isMuted() async => true;
-
-  @override
-  Future<void> setVolume(double volume) async {}
-
-  @override
-  Future<double> getVolume() async => 0.6;
-
-  @override
-  Future<bool> isMonitoring() async => true;
-
-  @override
-  Future<AudioMonitorState> getState() async {
-    return const AudioMonitorState(
-      isMonitoring: true,
-      isMuted: true,
-      volume: 0.6,
-      inputDeviceId: 'input-1',
-      outputDeviceId: 'output-1',
-    );
-  }
+  Future<void> setNativeListenOutputDevice({
+    required String inputDeviceId,
+    required String outputDeviceId,
+  }) async {}
 }
 
 void main() {
-  final AudioMonitorPlatform initialPlatform = AudioMonitorPlatform.instance;
+  final initialPlatform = AudioMonitorPlatform.instance;
 
-  test('$MethodChannelAudioMonitor is the default instance', () {
+  test('MethodChannelAudioMonitor is the default instance', () {
     expect(initialPlatform, isInstanceOf<MethodChannelAudioMonitor>());
   });
 
   test('AudioMonitor forwards typed platform calls', () async {
-    const monitor = AudioMonitor();
-    AudioMonitorPlatform.instance = MockAudioMonitorPlatform();
+    final mockPlatform = MockAudioMonitorPlatform();
+    AudioMonitorPlatform.instance = mockPlatform;
 
-    final inputs = await monitor.getInputDevices();
-    final outputs = await monitor.getOutputDevices();
-    final state = await monitor.getState();
+    final inputs = await AudioMonitor.getInputDevices();
+    final outputs = await AudioMonitor.getOutputDevices();
+    final configuration = await AudioMonitor.getNativeListenConfiguration(
+      inputDeviceId: 'input-1',
+    );
 
-    expect(inputs.single.name, 'Built-in Microphone');
-    expect(outputs.single.type, AudioMonitorDeviceType.output);
-    expect(await monitor.isMonitoring(), isTrue);
-    expect(await monitor.isMuted(), isTrue);
-    expect(await monitor.getVolume(), 0.6);
-    expect(state.outputDeviceId, 'output-1');
+    expect(inputs.single.state, AudioDeviceState.active);
+    expect(outputs.single.state, AudioDeviceState.active);
+    expect(configuration.enabled, isTrue);
+    expect(configuration.outputDeviceId, 'output-1');
   });
 
-  test('AudioMonitorDevice parses map payloads', () {
-    final device = AudioMonitorDevice.fromMap(const {
-      'id': 'device-123',
-      'name': 'USB Interface',
+  test('AudioInputDevice parses map payloads', () {
+    final device = AudioInputDevice.fromMap(const {
+      'id': 'input-1',
+      'name': 'Mic 1',
+      'isDefault': true,
+      'state': 'active',
+    });
+
+    expect(device.name, 'Mic 1');
+    expect(device.state, AudioDeviceState.active);
+  });
+
+  test('AudioOutputDevice parses map payloads', () {
+    final device = AudioOutputDevice.fromMap(const {
+      'id': 'output-1',
+      'name': 'Speakers 1',
       'isDefault': false,
-      'type': 'input',
+      'state': 'disabled',
     });
 
-    expect(device.id, 'device-123');
-    expect(device.type, AudioMonitorDeviceType.input);
-    expect(device.isDefault, isFalse);
+    expect(device.name, 'Speakers 1');
+    expect(device.state, AudioDeviceState.disabled);
   });
 
-  test('AudioMonitorState parses map payloads', () {
-    final state = AudioMonitorState.fromMap(const {
-      'isMonitoring': true,
-      'isMuted': true,
-      'volume': 0.6,
-      'inputDeviceId': 'input-1',
+  test('NativeListenConfiguration parses map payloads', () {
+    final configuration = NativeListenConfiguration.fromMap(const {
+      'enabled': true,
       'outputDeviceId': 'output-1',
+      'outputDeviceName': 'Speakers 1',
+      'usesDefaultOutputDevice': false,
     });
 
-    expect(state.isMonitoring, isTrue);
-    expect(state.isMuted, isTrue);
-    expect(state.volume, 0.6);
-    expect(state.inputDeviceId, 'input-1');
-    expect(state.outputDeviceId, 'output-1');
+    expect(configuration.enabled, isTrue);
+    expect(configuration.outputDeviceName, 'Speakers 1');
+    expect(configuration.usesDefaultOutputDevice, isFalse);
   });
 
-  test('AudioMonitorErrorCode falls back to nativeAudioError', () {
+  test('AudioMonitorErrorCode falls back to nativeWindowsApiFailed', () {
     expect(
-      AudioMonitorErrorCode.fromValue('unexpected-code'),
-      AudioMonitorErrorCode.nativeAudioError,
+      AudioMonitorErrorCode.fromValue('unknownErrorCode'),
+      AudioMonitorErrorCode.nativeWindowsApiFailed,
     );
   });
 }

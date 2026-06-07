@@ -18,7 +18,7 @@ void main() {
                   'id': 'input-1',
                   'name': 'Built-in Microphone',
                   'isDefault': true,
-                  'type': 'input',
+                  'state': 'active',
                 },
               ];
             case 'getOutputDevices':
@@ -27,16 +27,15 @@ void main() {
                   'id': 'output-1',
                   'name': 'Built-in Output',
                   'isDefault': true,
-                  'type': 'output',
+                  'state': 'active',
                 },
               ];
-            case 'getState':
+            case 'getNativeListenConfiguration':
               return {
-                'isMonitoring': false,
-                'isMuted': false,
-                'volume': 1.0,
-                'inputDeviceId': null,
+                'enabled': false,
                 'outputDeviceId': null,
+                'outputDeviceName': 'Built-in Output',
+                'usesDefaultOutputDevice': true,
               };
           }
           return null;
@@ -48,12 +47,12 @@ void main() {
         .setMockMethodCallHandler(channel, null);
   });
 
-  testWidgets('renders audio monitor controls', (tester) async {
+  testWidgets('renders native listen controls', (tester) async {
     await tester.pumpWidget(const AudioMonitorExampleApp());
     await tester.pumpAndSettle();
 
-    expect(find.text('Live input monitoring'), findsOneWidget);
-    expect(find.text('Start monitoring'), findsOneWidget);
-    expect(find.text('Stop monitoring'), findsOneWidget);
+    expect(find.text('Native Windows "Listen to this device"'), findsOneWidget);
+    expect(find.text('Enable native listen'), findsOneWidget);
+    expect(find.text('Disable native listen'), findsOneWidget);
   });
 }

@@ -1,63 +1,37 @@
 # audio_monitor
 
-[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-0A7EA4)](https://domingomg.github.io/audio_monitor/)
+A Flutter desktop plugin for controlling native audio monitoring features.
 
-A Flutter desktop plugin for live audio input monitoring on desktop platforms.
+## Windows native listen support
 
-`audio_monitor` lets a Flutter app select an input device and monitor that signal through an output path in real time.
+On Windows, `audio_monitor` configures the built-in operating system feature exposed in Sound Control Panel as:
 
-Example flow:
+`Recording > Microphone Properties > Listen > Listen to this device`
 
-`Microphone / Line In / Audio Interface Input -> Headphones / Speakers / Output Device`
+This implementation:
 
-![audio_monitor macOS example UI](doc/assets/images/macos.png)
+- Uses the Windows endpoint property store for the capture device
+- Reads and writes the same native setting shown by the Sound Control Panel
+- Can assign a specific playback endpoint or the current default playback device
 
-## Official documentation
+This implementation does **not**:
 
-The full documentation website for this repository is available at:
+- Capture audio in the plugin
+- Render audio in the plugin
+- Build a custom software monitoring pipeline
+- Record, buffer, or process PCM samples
 
-- [domingomg.github.io/audio_monitor](https://domingomg.github.io/audio_monitor/)
-
-Use the documentation site for:
-
-- installation and platform setup
-- macOS permissions and requirements
-- API reference
-- architecture notes
-- release notes and roadmap
-- screenshots and usage guidance
-
-## Key capabilities
-
-- Input device enumeration
-- Output device enumeration
-- Live desktop input monitoring
-- Monitor mute and unmute without tearing down the session
-- Dedicated monitor playback volume
-- Current monitoring state from Flutter
-
-## Important scope
-
-This plugin is intentionally focused on live monitoring and routing.
-
-- It does **not** record audio
-- It does **not** persist audio buffers
-- It does **not** generate FFT data
-- It does **not** generate waveforms
-- It does **not** provide RMS or peak metering
-- It does **not** replace `system_audio_meter`
+Behavior depends on Windows endpoint property support and write access to the device property store.
 
 ## Platform support
 
 | Platform | Status | Notes |
 | --- | --- | --- |
-| macOS | Supported | Current backend targets `selected input -> system default output` |
-| Windows | Planned | Intended to align with native listen-to-device behavior |
-| Linux | Not supported yet | Deferred for a future release |
+| Windows | Supported | Controls native `Listen to this device` |
+| macOS | Unsupported for this API | Throws `unsupportedPlatform` |
+| Linux | Unsupported for this API | Throws `unsupportedPlatform` |
 
 ## Installation
-
-Add the dependency:
 
 ```yaml
 dependencies:
@@ -71,77 +45,105 @@ Then run:
 flutter pub get
 ```
 
-## Quick start
+## Dart API
 
 ```dart
 import 'package:audio_monitor/audio_monitor.dart';
 
-final monitor = AudioMonitor();
+final inputs = await AudioMonitor.getInputDevices();
+final outputs = await AudioMonitor.getOutputDevices();
 
-final inputs = await monitor.getInputDevices();
-final outputs = await monitor.getOutputDevices();
+final configuration = await AudioMonitor.getNativeListenConfiguration(
+  inputDeviceId: inputs.first.id,
+);
 
-await monitor.setVolume(0.5);
-
-await monitor.start(
+await AudioMonitor.enableNativeListen(
   inputDeviceId: inputs.first.id,
   outputDeviceId: outputs.first.id,
 );
 
-await monitor.mute();
-await monitor.unmute();
+await AudioMonitor.setNativeListenOutputDevice(
+  inputDeviceId: inputs.first.id,
+  outputDeviceId: AudioMonitor.defaultOutputDeviceId,
+);
 
-final active = await monitor.isMonitoring();
-final state = await monitor.getState();
-
-await monitor.stop();
+await AudioMonitor.disableNativeListen(
+  inputDeviceId: inputs.first.id,
+);
 ```
 
-`setVolume()` can also be called before `start()`, so the monitoring session begins with the desired playback level.
+## Data models
 
-## Public API
-
-### `AudioMonitorDevice`
+### `AudioInputDevice`
 
 - `id`
 - `name`
 - `isDefault`
-- `type`
+- `state`
 
-### `AudioMonitorState`
+### `AudioOutputDevice`
 
-- `isMonitoring`
-- `isMuted`
-- `volume`
-- `inputDeviceId`
+- `id`
+- `name`
+- `isDefault`
+- `state`
+
+### `AudioDeviceState`
+
+- `active`
+- `disabled`
+- `unplugged`
+- `notPresent`
+- `unknown`
+
+### `NativeListenConfiguration`
+
+- `enabled`
 - `outputDeviceId`
+- `outputDeviceName`
+- `usesDefaultOutputDevice`
 
-### Errors
+## Errors
 
-Native failures are surfaced as `AudioMonitorException` with one of these codes:
+Native failures are surfaced as `AudioMonitorException` with these codes:
 
-- `deviceNotFound`
+- `inputDeviceNotFound`
+- `outputDeviceNotFound`
+- `deviceNotActive`
+- `listenConfigurationUnavailable`
+- `listenConfigurationUnsupported`
 - `permissionDenied`
-- `monitoringAlreadyActive`
-- `monitoringNotActive`
-- `platformNotSupported`
-- `nativeAudioError`
+- `nativeWindowsApiFailed`
+- `unsupportedPlatform`
 
-## macOS host app requirements
+## Native Windows Listen to this device
 
-If your Flutter app uses this plugin on macOS, review the full setup guide in the official docs. At minimum, host applications must declare the microphone privacy key, and sandboxed apps also need the correct audio-input entitlement.
+The Windows backend writes endpoint properties associated with native microphone monitoring. The goal is that after calling `enableNativeListen`, the Sound Control Panel reflects the same state.
 
-Documentation:
+If your device driver or Windows build refuses property-store writes for this setting, the plugin returns a platform exception instead of falling back to a custom audio monitor path.
 
-- [Installation guide](https://domingomg.github.io/audio_monitor/installation/)
-- [Architecture guide](https://domingomg.github.io/audio_monitor/architecture/)
+## Diagnostic tool
 
-## Limitations
+The repository includes a Windows diagnostic executable target:
 
-- The current macOS backend routes monitoring to the current system default output.
-- Near-zero latency is not physically possible; end-to-end latency still depends on hardware and buffer sizes.
-- Windows and Linux are not implemented in this release.
+- `audio_monitor_property_dump`
 
-## Repository
+It dumps property keys and values for capture and render endpoints so you can compare endpoint state before and after changing `Listen to this device` manually in Windows.
 
-- [GitHub repository](https://github.com/DomingoMG/audio_monitor)
+## Manual QA checklist
+
+1. Run the example app on Windows.
+2. Verify that input devices are listed with state and default marker.
+3. Verify that output devices are listed with state and default marker.
+4. Select an input device and an output device.
+5. Press `Enable native listen`.
+6. Open Sound Control Panel and confirm `Listen to this device` is checked.
+7. Confirm the selected playback device matches the app state.
+8. Change the output device in the app and press `Apply output device`.
+9. Reopen the microphone `Listen` tab and confirm the playback target changed.
+10. Press `Disable native listen`.
+11. Confirm the checkbox is unchecked in Sound Control Panel.
+
+## Warning
+
+This feature is Windows-specific and depends on native endpoint property behavior. It does not provide a portable cross-platform software monitor path.

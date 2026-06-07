@@ -17,57 +17,56 @@ void main() {
   test('getInputDevices parses native payloads', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (methodCall) async {
-          if (methodCall.method == 'getInputDevices') {
-            return [
-              {
-                'id': '1',
-                'name': 'Built-in Microphone',
-                'isDefault': true,
-                'type': 'input',
-              },
-            ];
-          }
-          return null;
-        });
+      if (methodCall.method == 'getInputDevices') {
+        return [
+          {
+            'id': 'input-1',
+            'name': 'Built-in Microphone',
+            'isDefault': true,
+            'state': 'active',
+          },
+        ];
+      }
+      return null;
+    });
 
     final devices = await platform.getInputDevices();
 
     expect(devices.single.name, 'Built-in Microphone');
-    expect(devices.single.type, AudioMonitorDeviceType.input);
+    expect(devices.single.state, AudioDeviceState.active);
   });
 
-  test('getState parses native payloads', () async {
+  test('getNativeListenConfiguration parses native payloads', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (methodCall) async {
-          if (methodCall.method == 'getState') {
-            return {
-              'isMonitoring': true,
-              'isMuted': true,
-              'volume': 0.6,
-              'inputDeviceId': '1',
-              'outputDeviceId': '2',
-            };
-          }
-          return null;
-        });
+      if (methodCall.method == 'getNativeListenConfiguration') {
+        return {
+          'enabled': true,
+          'outputDeviceId': 'output-1',
+          'outputDeviceName': 'Speakers',
+          'usesDefaultOutputDevice': false,
+        };
+      }
+      return null;
+    });
 
-    final state = await platform.getState();
+    final configuration = await platform.getNativeListenConfiguration(
+      inputDeviceId: 'input-1',
+    );
 
-    expect(state.isMonitoring, isTrue);
-    expect(state.isMuted, isTrue);
-    expect(state.volume, 0.6);
-    expect(state.inputDeviceId, '1');
-    expect(state.outputDeviceId, '2');
+    expect(configuration.enabled, isTrue);
+    expect(configuration.outputDeviceId, 'output-1');
+    expect(configuration.outputDeviceName, 'Speakers');
   });
 
   test('platform errors are mapped to AudioMonitorException', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (methodCall) async {
-          throw PlatformException(
-            code: 'platformNotSupported',
-            message: 'Windows support is not implemented yet.',
-          );
-        });
+      throw PlatformException(
+        code: 'unsupportedPlatform',
+        message: 'Native Windows listen control is only available on Windows.',
+      );
+    });
 
     expect(
       platform.getOutputDevices,
@@ -76,72 +75,57 @@ void main() {
             .having(
               (error) => error.code,
               'code',
-              AudioMonitorErrorCode.platformNotSupported,
+              AudioMonitorErrorCode.unsupportedPlatform,
             )
             .having(
               (error) => error.message,
               'message',
-              'Windows support is not implemented yet.',
+              'Native Windows listen control is only available on Windows.',
             ),
       ),
     );
   });
 
-  test('start passes arguments over the method channel', () async {
+  test('enableNativeListen passes arguments over the method channel', () async {
     MethodCall? capturedCall;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (methodCall) async {
-          capturedCall = methodCall;
-          return null;
-        });
+      capturedCall = methodCall;
+      return null;
+    });
 
-    await platform.start(inputDeviceId: 'input-1', outputDeviceId: 'output-1');
+    await platform.enableNativeListen(
+      inputDeviceId: 'input-1',
+      outputDeviceId: 'output-1',
+    );
 
-    expect(capturedCall?.method, 'start');
+    expect(capturedCall?.method, 'enableNativeListen');
     expect(capturedCall?.arguments, <String, Object?>{
       'inputDeviceId': 'input-1',
       'outputDeviceId': 'output-1',
     });
   });
 
-  test('mute passes method over the channel', () async {
-    MethodCall? capturedCall;
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, (methodCall) async {
-          capturedCall = methodCall;
-          return null;
-        });
+  test(
+    'setNativeListenOutputDevice passes arguments over the method channel',
+    () async {
+      MethodCall? capturedCall;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (methodCall) async {
+        capturedCall = methodCall;
+        return null;
+      });
 
-    await platform.mute();
+      await platform.setNativeListenOutputDevice(
+        inputDeviceId: 'input-1',
+        outputDeviceId: AudioMonitor.defaultOutputDeviceId,
+      );
 
-    expect(capturedCall?.method, 'mute');
-  });
-
-  test('isMuted defaults to false when the platform returns null', () async {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, (methodCall) async => null);
-
-    expect(await platform.isMuted(), isFalse);
-  });
-
-  test('setVolume passes arguments over the method channel', () async {
-    MethodCall? capturedCall;
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, (methodCall) async {
-          capturedCall = methodCall;
-          return null;
-        });
-
-    await platform.setVolume(0.35);
-
-    expect(capturedCall?.method, 'setVolume');
-    expect(capturedCall?.arguments, <String, Object?>{'volume': 0.35});
-  });
-
-  test('getVolume defaults to 1.0 when the platform returns null', () async {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, (methodCall) async => null);
-
-    expect(await platform.getVolume(), 1.0);
-  });
+      expect(capturedCall?.method, 'setNativeListenOutputDevice');
+      expect(capturedCall?.arguments, <String, Object?>{
+        'inputDeviceId': 'input-1',
+        'outputDeviceId': AudioMonitor.defaultOutputDeviceId,
+      });
+    },
+  );
 }

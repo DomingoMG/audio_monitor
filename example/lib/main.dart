@@ -13,7 +13,7 @@ class AudioMonitorExampleApp extends StatelessWidget {
     return MaterialApp(
       title: 'Audio Monitor Example',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1B5E20)),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0F766E)),
         useMaterial3: true,
       ),
       home: const AudioMonitorExamplePage(),
@@ -30,34 +30,36 @@ class AudioMonitorExamplePage extends StatefulWidget {
 }
 
 class _AudioMonitorExamplePageState extends State<AudioMonitorExamplePage> {
-  final AudioMonitor _monitor = const AudioMonitor();
-
-  List<AudioMonitorDevice> _inputDevices = const [];
-  List<AudioMonitorDevice> _outputDevices = const [];
-  AudioMonitorDevice? _selectedInput;
-  AudioMonitorDevice? _selectedOutput;
-  AudioMonitorState _state = const AudioMonitorState.idle();
+  List<AudioInputDevice> _inputDevices = const [];
+  List<AudioOutputDevice> _outputDevices = const [];
+  String? _selectedInputId;
+  String _selectedOutputId = AudioMonitor.defaultOutputDeviceId;
+  NativeListenConfiguration? _configuration;
   String? _errorMessage;
   bool _isLoading = true;
   bool _isBusy = false;
-  double _volumeDraft = 1.0;
 
   @override
   void initState() {
     super.initState();
-    _loadDevicesAndState();
+    _refreshAll();
   }
 
-  Future<void> _loadDevicesAndState() async {
+  Future<void> _refreshAll() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
-      final inputs = await _monitor.getInputDevices();
-      final outputs = await _monitor.getOutputDevices();
-      final state = await _monitor.getState();
+      final inputs = await AudioMonitor.getInputDevices();
+      final outputs = await AudioMonitor.getOutputDevices();
+      final selectedInputId = _resolveInputId(inputs, _selectedInputId);
+      final configuration = selectedInputId == null
+          ? null
+          : await AudioMonitor.getNativeListenConfiguration(
+              inputDeviceId: selectedInputId,
+            );
 
       if (!mounted) {
         return;
@@ -66,16 +68,9 @@ class _AudioMonitorExamplePageState extends State<AudioMonitorExamplePage> {
       setState(() {
         _inputDevices = inputs;
         _outputDevices = outputs;
-        _state = state;
-        _selectedInput = _resolveSelectedDevice(
-          devices: inputs,
-          selectedId: state.inputDeviceId,
-        );
-        _selectedOutput = _resolveSelectedDevice(
-          devices: outputs,
-          selectedId: state.outputDeviceId,
-        );
-        _volumeDraft = state.volume;
+        _selectedInputId = selectedInputId;
+        _configuration = configuration;
+        _selectedOutputId = _resolveOutputId(outputs, configuration);
       });
     } on AudioMonitorException catch (error) {
       if (!mounted) {
@@ -94,37 +89,94 @@ class _AudioMonitorExamplePageState extends State<AudioMonitorExamplePage> {
     }
   }
 
-  AudioMonitorDevice? _resolveSelectedDevice({
-    required List<AudioMonitorDevice> devices,
-    required String? selectedId,
-  }) {
-    if (devices.isEmpty) {
+  String? _resolveInputId(List<AudioInputDevice> inputs, String? preferredId) {
+    if (inputs.isEmpty) {
       return null;
     }
 
-    if (selectedId != null) {
-      for (final device in devices) {
-        if (device.id == selectedId) {
-          return device;
-        }
+    for (final device in inputs) {
+      if (device.id == preferredId) {
+        return device.id;
       }
     }
 
-    for (final device in devices) {
+    for (final device in inputs) {
       if (device.isDefault) {
-        return device;
+        return device.id;
       }
     }
 
-    return devices.first;
+    return inputs.first.id;
   }
 
-  Future<void> _startMonitoring() async {
-    final input = _selectedInput;
-    final output = _selectedOutput;
-    if (input == null || output == null) {
+  String _resolveOutputId(
+    List<AudioOutputDevice> outputs,
+    NativeListenConfiguration? configuration,
+  ) {
+    if (configuration == null || configuration.usesDefaultOutputDevice) {
+      return AudioMonitor.defaultOutputDeviceId;
+    }
+
+    final outputDeviceId = configuration.outputDeviceId;
+    if (outputDeviceId == null) {
+      return AudioMonitor.defaultOutputDeviceId;
+    }
+
+    for (final device in outputs) {
+      if (device.id == outputDeviceId) {
+        return outputDeviceId;
+      }
+    }
+
+    return AudioMonitor.defaultOutputDeviceId;
+  }
+
+  Future<void> _refreshConfiguration() async {
+    final inputDeviceId = _selectedInputId;
+    if (inputDeviceId == null) {
+      return;
+    }
+
+    setState(() {
+      _isBusy = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final configuration = await AudioMonitor.getNativeListenConfiguration(
+        inputDeviceId: inputDeviceId,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
       setState(() {
-        _errorMessage = 'Select both an input and an output device.';
+        _configuration = configuration;
+        _selectedOutputId = _resolveOutputId(_outputDevices, configuration);
+      });
+    } on AudioMonitorException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _errorMessage = '${error.code.name}: ${error.message}';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isBusy = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _enableNativeListen() async {
+    final inputDeviceId = _selectedInputId;
+    if (inputDeviceId == null) {
+      setState(() {
+        _errorMessage = 'Select an input device first.';
       });
       return;
     }
@@ -135,16 +187,11 @@ class _AudioMonitorExamplePageState extends State<AudioMonitorExamplePage> {
     });
 
     try {
-      await _monitor.start(inputDeviceId: input.id, outputDeviceId: output.id);
-      final state = await _monitor.getState();
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _state = state;
-        _volumeDraft = state.volume;
-      });
+      await AudioMonitor.enableNativeListen(
+        inputDeviceId: inputDeviceId,
+        outputDeviceId: _selectedOutputId,
+      );
+      await _refreshConfiguration();
     } on AudioMonitorException catch (error) {
       if (!mounted) {
         return;
@@ -162,23 +209,20 @@ class _AudioMonitorExamplePageState extends State<AudioMonitorExamplePage> {
     }
   }
 
-  Future<void> _stopMonitoring() async {
+  Future<void> _disableNativeListen() async {
+    final inputDeviceId = _selectedInputId;
+    if (inputDeviceId == null) {
+      return;
+    }
+
     setState(() {
       _isBusy = true;
       _errorMessage = null;
     });
 
     try {
-      await _monitor.stop();
-      final state = await _monitor.getState();
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _state = state;
-        _volumeDraft = state.volume;
-      });
+      await AudioMonitor.disableNativeListen(inputDeviceId: inputDeviceId);
+      await _refreshConfiguration();
     } on AudioMonitorException catch (error) {
       if (!mounted) {
         return;
@@ -196,57 +240,23 @@ class _AudioMonitorExamplePageState extends State<AudioMonitorExamplePage> {
     }
   }
 
-  Future<void> _muteMonitoring() async {
-    setState(() {
-      _isBusy = true;
-      _errorMessage = null;
-    });
-
-    try {
-      await _monitor.mute();
-      final state = await _monitor.getState();
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _state = state;
-        _volumeDraft = state.volume;
-      });
-    } on AudioMonitorException catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _errorMessage = '${error.code.name}: ${error.message}';
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isBusy = false;
-        });
-      }
+  Future<void> _setOutputDevice() async {
+    final inputDeviceId = _selectedInputId;
+    if (inputDeviceId == null) {
+      return;
     }
-  }
 
-  Future<void> _unmuteMonitoring() async {
     setState(() {
       _isBusy = true;
       _errorMessage = null;
     });
 
     try {
-      await _monitor.unmute();
-      final state = await _monitor.getState();
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _state = state;
-        _volumeDraft = state.volume;
-      });
+      await AudioMonitor.setNativeListenOutputDevice(
+        inputDeviceId: inputDeviceId,
+        outputDeviceId: _selectedOutputId,
+      );
+      await _refreshConfiguration();
     } on AudioMonitorException catch (error) {
       if (!mounted) {
         return;
@@ -254,41 +264,6 @@ class _AudioMonitorExamplePageState extends State<AudioMonitorExamplePage> {
 
       setState(() {
         _errorMessage = '${error.code.name}: ${error.message}';
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isBusy = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _setMonitorVolume(double volume) async {
-    setState(() {
-      _isBusy = true;
-      _errorMessage = null;
-    });
-
-    try {
-      await _monitor.setVolume(volume);
-      final state = await _monitor.getState();
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _state = state;
-        _volumeDraft = state.volume;
-      });
-    } on AudioMonitorException catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _errorMessage = '${error.code.name}: ${error.message}';
-        _volumeDraft = _state.volume;
       });
     } finally {
       if (mounted) {
@@ -305,7 +280,7 @@ class _AudioMonitorExamplePageState extends State<AudioMonitorExamplePage> {
       appBar: AppBar(title: const Text('Audio Monitor')),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 760),
+          constraints: const BoxConstraints(maxWidth: 820),
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: _isLoading
@@ -315,37 +290,39 @@ class _AudioMonitorExamplePageState extends State<AudioMonitorExamplePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Live input monitoring',
+                          'Native Windows "Listen to this device"',
                           style: Theme.of(context).textTheme.headlineSmall,
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Route a selected input device to an output device for real-time monitoring.',
+                          'This example configures the operating system built-in microphone monitoring feature instead of creating a custom audio pipeline.',
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                         const SizedBox(height: 24),
-                        _DeviceDropdown(
-                          label: 'Input device',
+                        _InputDropdown(
                           devices: _inputDevices,
-                          selectedDevice: _selectedInput,
-                          onChanged: _state.isMonitoring
+                          selectedDeviceId: _selectedInputId,
+                          onChanged: _isBusy
                               ? null
-                              : (device) {
+                              : (value) async {
                                   setState(() {
-                                    _selectedInput = device;
+                                    _selectedInputId = value;
                                   });
+                                  await _refreshConfiguration();
                                 },
                         ),
                         const SizedBox(height: 16),
-                        _DeviceDropdown(
-                          label: 'Output device',
+                        _OutputDropdown(
                           devices: _outputDevices,
-                          selectedDevice: _selectedOutput,
-                          onChanged: _state.isMonitoring
+                          selectedDeviceId: _selectedOutputId,
+                          onChanged: _isBusy
                               ? null
-                              : (device) {
+                              : (value) {
+                                  if (value == null) {
+                                    return;
+                                  }
                                   setState(() {
-                                    _selectedOutput = device;
+                                    _selectedOutputId = value;
                                   });
                                 },
                         ),
@@ -355,37 +332,23 @@ class _AudioMonitorExamplePageState extends State<AudioMonitorExamplePage> {
                           runSpacing: 12,
                           children: [
                             FilledButton(
-                              onPressed: _isBusy || _state.isMonitoring
-                                  ? null
-                                  : _startMonitoring,
-                              child: const Text('Start monitoring'),
+                              onPressed: _isBusy ? null : _enableNativeListen,
+                              child: const Text('Enable native listen'),
                             ),
                             OutlinedButton(
-                              onPressed: _isBusy || !_state.isMonitoring
-                                  ? null
-                                  : _stopMonitoring,
-                              child: const Text('Stop monitoring'),
+                              onPressed: _isBusy ? null : _disableNativeListen,
+                              child: const Text('Disable native listen'),
                             ),
                             OutlinedButton(
-                              onPressed:
-                                  _isBusy ||
-                                      !_state.isMonitoring ||
-                                      _state.isMuted
-                                  ? null
-                                  : _muteMonitoring,
-                              child: const Text('Mute monitor'),
-                            ),
-                            OutlinedButton(
-                              onPressed:
-                                  _isBusy ||
-                                      !_state.isMonitoring ||
-                                      !_state.isMuted
-                                  ? null
-                                  : _unmuteMonitoring,
-                              child: const Text('Unmute monitor'),
+                              onPressed: _isBusy ? null : _setOutputDevice,
+                              child: const Text('Apply output device'),
                             ),
                             TextButton(
-                              onPressed: _isBusy ? null : _loadDevicesAndState,
+                              onPressed: _isBusy ? null : _refreshConfiguration,
+                              child: const Text('Refresh configuration'),
+                            ),
+                            TextButton(
+                              onPressed: _isBusy ? null : _refreshAll,
                               child: const Text('Refresh devices'),
                             ),
                           ],
@@ -398,42 +361,26 @@ class _AudioMonitorExamplePageState extends State<AudioMonitorExamplePage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Current state',
+                                  'Current native listen state',
                                   style: Theme.of(
                                     context,
                                   ).textTheme.titleMedium,
                                 ),
                                 const SizedBox(height: 12),
                                 Text(
-                                  'Monitoring: ${_state.isMonitoring ? "active" : "stopped"}',
-                                ),
-                                Text('Muted: ${_state.isMuted ? "yes" : "no"}'),
-                                Text(
-                                  'Input: ${_state.inputDeviceId ?? "none"}',
+                                  'Enabled: ${_configuration?.enabled == true ? "yes" : "no"}',
                                 ),
                                 Text(
-                                  'Output: ${_state.outputDeviceId ?? "none"}',
+                                  'Input device: ${_selectedInputId ?? "none"}',
                                 ),
-                                const SizedBox(height: 16),
                                 Text(
-                                  'Monitor volume: ${(_state.volume * 100).round()}%',
+                                  'Uses default output: ${_configuration?.usesDefaultOutputDevice == true ? "yes" : "no"}',
                                 ),
-                                Slider(
-                                  value: _volumeDraft.clamp(0.0, 1.0),
-                                  min: 0.0,
-                                  max: 1.0,
-                                  divisions: 20,
-                                  label: '${(_volumeDraft * 100).round()}%',
-                                  onChanged: _isBusy
-                                      ? null
-                                      : (value) {
-                                          setState(() {
-                                            _volumeDraft = value;
-                                          });
-                                        },
-                                  onChangeEnd: _isBusy
-                                      ? null
-                                      : _setMonitorVolume,
+                                Text(
+                                  'Output device id: ${_configuration?.outputDeviceId ?? "default playback device"}',
+                                ),
+                                Text(
+                                  'Output device name: ${_configuration?.outputDeviceName ?? "default playback device"}',
                                 ),
                               ],
                             ),
@@ -459,7 +406,7 @@ class _AudioMonitorExamplePageState extends State<AudioMonitorExamplePage> {
                         ],
                         const SizedBox(height: 16),
                         Text(
-                          'macOS note: this version monitors to the current system default output. Set your MacBook speakers as default output first.',
+                          'Manual check: after enabling native listen, open Sound Control Panel > Recording > your microphone > Properties > Listen and confirm that the checkbox and playback device match this app.',
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ],
@@ -472,36 +419,34 @@ class _AudioMonitorExamplePageState extends State<AudioMonitorExamplePage> {
   }
 }
 
-class _DeviceDropdown extends StatelessWidget {
-  const _DeviceDropdown({
-    required this.label,
+class _InputDropdown extends StatelessWidget {
+  const _InputDropdown({
     required this.devices,
-    required this.selectedDevice,
+    required this.selectedDeviceId,
     required this.onChanged,
   });
 
-  final String label;
-  final List<AudioMonitorDevice> devices;
-  final AudioMonitorDevice? selectedDevice;
-  final ValueChanged<AudioMonitorDevice?>? onChanged;
+  final List<AudioInputDevice> devices;
+  final String? selectedDeviceId;
+  final ValueChanged<String?>? onChanged;
 
   @override
   Widget build(BuildContext context) {
     return InputDecorator(
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
+      decoration: const InputDecoration(
+        labelText: 'Input device',
+        border: OutlineInputBorder(),
       ),
       child: DropdownButtonHideUnderline(
-        child: DropdownButton<AudioMonitorDevice>(
+        child: DropdownButton<String>(
           isExpanded: true,
-          value: selectedDevice,
+          value: selectedDeviceId,
           items: devices
               .map(
-                (device) => DropdownMenuItem<AudioMonitorDevice>(
-                  value: device,
+                (device) => DropdownMenuItem<String>(
+                  value: device.id,
                   child: Text(
-                    device.isDefault ? '${device.name} (default)' : device.name,
+                    _deviceLabel(device.name, device.isDefault, device.state),
                   ),
                 ),
               )
@@ -511,4 +456,52 @@ class _DeviceDropdown extends StatelessWidget {
       ),
     );
   }
+}
+
+class _OutputDropdown extends StatelessWidget {
+  const _OutputDropdown({
+    required this.devices,
+    required this.selectedDeviceId,
+    required this.onChanged,
+  });
+
+  final List<AudioOutputDevice> devices;
+  final String selectedDeviceId;
+  final ValueChanged<String?>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return InputDecorator(
+      decoration: const InputDecoration(
+        labelText: 'Playback through this device',
+        border: OutlineInputBorder(),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          isExpanded: true,
+          value: selectedDeviceId,
+          items: [
+            const DropdownMenuItem<String>(
+              value: AudioMonitor.defaultOutputDeviceId,
+              child: Text('Default playback device'),
+            ),
+            ...devices.map(
+              (device) => DropdownMenuItem<String>(
+                value: device.id,
+                child: Text(
+                  _deviceLabel(device.name, device.isDefault, device.state),
+                ),
+              ),
+            ),
+          ],
+          onChanged: onChanged,
+        ),
+      ),
+    );
+  }
+}
+
+String _deviceLabel(String name, bool isDefault, AudioDeviceState state) {
+  final defaultSuffix = isDefault ? ' (default)' : '';
+  return '$name$defaultSuffix [${state.name}]';
 }

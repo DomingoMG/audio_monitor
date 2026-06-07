@@ -5,25 +5,57 @@
 #include <flutter/plugin_registrar_windows.h>
 
 #include <memory>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace audio_monitor {
 
 class AudioMonitorPlugin : public flutter::Plugin {
  public:
-  static void RegisterWithRegistrar(flutter::PluginRegistrarWindows *registrar);
+  static void RegisterWithRegistrar(flutter::PluginRegistrarWindows* registrar);
 
   AudioMonitorPlugin();
 
   virtual ~AudioMonitorPlugin();
 
-  // Disallow copy and assign.
   AudioMonitorPlugin(const AudioMonitorPlugin&) = delete;
   AudioMonitorPlugin& operator=(const AudioMonitorPlugin&) = delete;
 
-  // Called when a method is called on this plugin's channel from Dart.
   void HandleMethodCall(
-      const flutter::MethodCall<flutter::EncodableValue> &method_call,
+      const flutter::MethodCall<flutter::EncodableValue>& method_call,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+
+  struct AudioDeviceDescriptor {
+    std::string id;
+    std::string name;
+    bool is_default;
+    std::string state;
+  };
+
+  struct ListenConfiguration {
+    bool enabled = false;
+    std::optional<std::string> output_device_id;
+    std::optional<std::string> output_device_name;
+    bool uses_default_output_device = true;
+  };
+
+ private:
+  std::vector<AudioDeviceDescriptor> GetInputDevices(
+      std::string* error_code, std::string* error_message) const;
+  std::vector<AudioDeviceDescriptor> GetOutputDevices(
+      std::string* error_code, std::string* error_message) const;
+  bool TryGetRequiredInputDeviceId(
+      const flutter::EncodableValue* arguments, std::string* input_device_id) const;
+  bool TryGetInputAndOutputDeviceIds(
+      const flutter::EncodableValue* arguments, std::string* input_device_id,
+      std::string* output_device_id) const;
+  flutter::EncodableValue SerializeInputDevices(
+      const std::vector<AudioDeviceDescriptor>& devices) const;
+  flutter::EncodableValue SerializeOutputDevices(
+      const std::vector<AudioDeviceDescriptor>& devices) const;
+  flutter::EncodableValue SerializeListenConfiguration(
+      const ListenConfiguration& configuration) const;
 };
 
 }  // namespace audio_monitor

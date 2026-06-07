@@ -1,8 +1,9 @@
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import 'audio_monitor_method_channel.dart';
-import 'src/audio_monitor_device.dart';
-import 'src/audio_monitor_state.dart';
+import 'src/audio_input_device.dart';
+import 'src/audio_output_device.dart';
+import 'src/native_listen_configuration.dart';
 
 abstract class AudioMonitorPlatform extends PlatformInterface {
   AudioMonitorPlatform() : super(token: _token);
@@ -18,50 +19,41 @@ abstract class AudioMonitorPlatform extends PlatformInterface {
     _instance = instance;
   }
 
-  Future<List<AudioMonitorDevice>> getInputDevices() {
+  Future<List<AudioInputDevice>> getInputDevices() {
     throw UnimplementedError('getInputDevices() has not been implemented.');
   }
 
-  Future<List<AudioMonitorDevice>> getOutputDevices() {
+  Future<List<AudioOutputDevice>> getOutputDevices() {
     throw UnimplementedError('getOutputDevices() has not been implemented.');
   }
 
-  Future<void> start({
+  Future<NativeListenConfiguration> getNativeListenConfiguration({
+    required String inputDeviceId,
+  }) {
+    throw UnimplementedError(
+      'getNativeListenConfiguration() has not been implemented.',
+    );
+  }
+
+  Future<void> enableNativeListen({
     required String inputDeviceId,
     required String outputDeviceId,
   }) {
-    throw UnimplementedError('start() has not been implemented.');
+    throw UnimplementedError('enableNativeListen() has not been implemented.');
   }
 
-  Future<void> stop() {
-    throw UnimplementedError('stop() has not been implemented.');
+  Future<void> disableNativeListen({
+    required String inputDeviceId,
+  }) {
+    throw UnimplementedError('disableNativeListen() has not been implemented.');
   }
 
-  Future<void> mute() {
-    throw UnimplementedError('mute() has not been implemented.');
-  }
-
-  Future<void> unmute() {
-    throw UnimplementedError('unmute() has not been implemented.');
-  }
-
-  Future<bool> isMuted() {
-    throw UnimplementedError('isMuted() has not been implemented.');
-  }
-
-  Future<void> setVolume(double volume) {
-    throw UnimplementedError('setVolume() has not been implemented.');
-  }
-
-  Future<double> getVolume() {
-    throw UnimplementedError('getVolume() has not been implemented.');
-  }
-
-  Future<bool> isMonitoring() {
-    throw UnimplementedError('isMonitoring() has not been implemented.');
-  }
-
-  Future<AudioMonitorState> getState() {
-    throw UnimplementedError('getState() has not been implemented.');
+  Future<void> setNativeListenOutputDevice({
+    required String inputDeviceId,
+    required String outputDeviceId,
+  }) {
+    throw UnimplementedError(
+      'setNativeListenOutputDevice() has not been implemented.',
+    );
   }
 }

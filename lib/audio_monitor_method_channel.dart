@@ -2,113 +2,88 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import 'audio_monitor_platform_interface.dart';
-import 'src/audio_monitor_device.dart';
+import 'src/audio_input_device.dart';
 import 'src/audio_monitor_exception.dart';
-import 'src/audio_monitor_state.dart';
+import 'src/audio_output_device.dart';
+import 'src/native_listen_configuration.dart';
 
 class MethodChannelAudioMonitor extends AudioMonitorPlatform {
   @visibleForTesting
   final MethodChannel methodChannel = const MethodChannel('audio_monitor');
 
   @override
-  Future<List<AudioMonitorDevice>> getInputDevices() async {
+  Future<List<AudioInputDevice>> getInputDevices() async {
     final devices = await _invokeListMethod('getInputDevices');
     return devices
         .map(
           (device) =>
-              AudioMonitorDevice.fromMap(Map<Object?, Object?>.from(device)),
+              AudioInputDevice.fromMap(Map<Object?, Object?>.from(device)),
         )
         .toList(growable: false);
   }
 
   @override
-  Future<List<AudioMonitorDevice>> getOutputDevices() async {
+  Future<List<AudioOutputDevice>> getOutputDevices() async {
     final devices = await _invokeListMethod('getOutputDevices');
     return devices
         .map(
           (device) =>
-              AudioMonitorDevice.fromMap(Map<Object?, Object?>.from(device)),
+              AudioOutputDevice.fromMap(Map<Object?, Object?>.from(device)),
         )
         .toList(growable: false);
   }
 
   @override
-  Future<void> start({
+  Future<NativeListenConfiguration> getNativeListenConfiguration({
+    required String inputDeviceId,
+  }) async {
+    try {
+      final configuration =
+          await methodChannel.invokeMapMethod<Object?, Object?>(
+        'getNativeListenConfiguration',
+        <String, Object?>{'inputDeviceId': inputDeviceId},
+      );
+      if (configuration == null) {
+        return const NativeListenConfiguration.disabled();
+      }
+
+      return NativeListenConfiguration.fromMap(configuration);
+    } on PlatformException catch (exception) {
+      throw _mapPlatformException(exception);
+    } on MissingPluginException {
+      throw _unsupportedPlatform();
+    }
+  }
+
+  @override
+  Future<void> enableNativeListen({
     required String inputDeviceId,
     required String outputDeviceId,
   }) async {
-    await _invokeVoidMethod('start', <String, Object?>{
+    await _invokeVoidMethod('enableNativeListen', <String, Object?>{
       'inputDeviceId': inputDeviceId,
       'outputDeviceId': outputDeviceId,
     });
   }
 
   @override
-  Future<void> stop() async {
-    await _invokeVoidMethod('stop');
+  Future<void> disableNativeListen({
+    required String inputDeviceId,
+  }) async {
+    await _invokeVoidMethod('disableNativeListen', <String, Object?>{
+      'inputDeviceId': inputDeviceId,
+    });
   }
 
   @override
-  Future<void> mute() async {
-    await _invokeVoidMethod('mute');
-  }
-
-  @override
-  Future<void> unmute() async {
-    await _invokeVoidMethod('unmute');
-  }
-
-  @override
-  Future<bool> isMuted() async {
-    try {
-      final isMuted = await methodChannel.invokeMethod<bool>('isMuted');
-      return isMuted ?? false;
-    } on PlatformException catch (exception) {
-      throw _mapPlatformException(exception);
-    }
-  }
-
-  @override
-  Future<void> setVolume(double volume) async {
-    await _invokeVoidMethod('setVolume', <String, Object?>{'volume': volume});
-  }
-
-  @override
-  Future<double> getVolume() async {
-    try {
-      final volume = await methodChannel.invokeMethod<double>('getVolume');
-      return (volume ?? 1.0).clamp(0.0, 1.0);
-    } on PlatformException catch (exception) {
-      throw _mapPlatformException(exception);
-    }
-  }
-
-  @override
-  Future<bool> isMonitoring() async {
-    try {
-      final isMonitoring = await methodChannel.invokeMethod<bool>(
-        'isMonitoring',
-      );
-      return isMonitoring ?? false;
-    } on PlatformException catch (exception) {
-      throw _mapPlatformException(exception);
-    }
-  }
-
-  @override
-  Future<AudioMonitorState> getState() async {
-    try {
-      final state = await methodChannel.invokeMapMethod<Object?, Object?>(
-        'getState',
-      );
-      if (state == null) {
-        return const AudioMonitorState.idle();
-      }
-
-      return AudioMonitorState.fromMap(state);
-    } on PlatformException catch (exception) {
-      throw _mapPlatformException(exception);
-    }
+  Future<void> setNativeListenOutputDevice({
+    required String inputDeviceId,
+    required String outputDeviceId,
+  }) async {
+    await _invokeVoidMethod('setNativeListenOutputDevice', <String, Object?>{
+      'inputDeviceId': inputDeviceId,
+      'outputDeviceId': outputDeviceId,
+    });
   }
 
   Future<List<Map<dynamic, dynamic>>> _invokeListMethod(String method) async {
@@ -118,16 +93,16 @@ class MethodChannelAudioMonitor extends AudioMonitorPlatform {
         return const <Map<dynamic, dynamic>>[];
       }
 
-      return devices
-          .map((device) {
-            if (device is! Map) {
-              throw const FormatException('Invalid list payload received.');
-            }
-            return device;
-          })
-          .toList(growable: false);
+      return devices.map((device) {
+        if (device is! Map) {
+          throw const FormatException('Invalid list payload received.');
+        }
+        return device;
+      }).toList(growable: false);
     } on PlatformException catch (exception) {
       throw _mapPlatformException(exception);
+    } on MissingPluginException {
+      throw _unsupportedPlatform();
     }
   }
 
@@ -139,16 +114,25 @@ class MethodChannelAudioMonitor extends AudioMonitorPlatform {
       await methodChannel.invokeMethod<void>(method, arguments);
     } on PlatformException catch (exception) {
       throw _mapPlatformException(exception);
+    } on MissingPluginException {
+      throw _unsupportedPlatform();
     }
   }
 
   AudioMonitorException _mapPlatformException(PlatformException exception) {
     return AudioMonitorException(
       code: AudioMonitorErrorCode.fromValue(
-        exception.code.isEmpty ? 'nativeAudioError' : exception.code,
+        exception.code.isEmpty ? 'nativeWindowsApiFailed' : exception.code,
       ),
-      message: exception.message ?? 'Native audio monitoring error.',
+      message: exception.message ?? 'Native Windows audio monitoring error.',
       details: exception.details,
+    );
+  }
+
+  AudioMonitorException _unsupportedPlatform() {
+    return const AudioMonitorException(
+      code: AudioMonitorErrorCode.unsupportedPlatform,
+      message: 'Native Windows listen control is only available on Windows.',
     );
   }
 }

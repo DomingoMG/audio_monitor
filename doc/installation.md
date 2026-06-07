@@ -1,6 +1,6 @@
 # Installation
 
-## Add The Plugin
+Add the dependency:
 
 ```yaml
 dependencies:
@@ -8,52 +8,28 @@ dependencies:
     path: ../audio_monitor
 ```
 
-Then run:
+Install packages:
 
 ```bash
 flutter pub get
 ```
 
-## Basic Usage
+## Windows notes
+
+The Windows backend controls the operating system native `Listen to this device` setting for capture endpoints.
+
+It does not create a custom capture or playback pipeline.
+
+## Quick verification
 
 ```dart
-import 'package:audio_monitor/audio_monitor.dart';
+final inputs = await AudioMonitor.getInputDevices();
+final outputs = await AudioMonitor.getOutputDevices();
 
-final monitor = AudioMonitor();
-
-final inputs = await monitor.getInputDevices();
-final outputs = await monitor.getOutputDevices();
-
-await monitor.setVolume(0.4);
-
-await monitor.start(
+await AudioMonitor.enableNativeListen(
   inputDeviceId: inputs.first.id,
   outputDeviceId: outputs.first.id,
 );
 ```
 
-## macOS Permissions
-
-Host apps must include:
-
-```xml
-<key>NSMicrophoneUsageDescription</key>
-<string>Audio Monitor needs microphone access to route the selected input device to your speakers or headphones in real time.</string>
-```
-
-If the app is sandboxed, also include:
-
-```xml
-<key>com.apple.security.device.audio-input</key>
-<true/>
-```
-
-## Important macOS Behavior
-
-- Monitoring currently routes to the system default output.
-- Selecting another output in the Flutter UI does not bypass the current macOS limitation unless that output is also the default system output.
-
-## Windows And Linux
-
-- Windows is not implemented yet.
-- Linux is intentionally unsupported for now.
+After enabling it, open Sound Control Panel and confirm the microphone `Listen` tab reflects the same state.

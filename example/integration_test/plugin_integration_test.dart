@@ -5,24 +5,31 @@ import 'package:integration_test/integration_test.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('device listing and state calls return typed values', (_) async {
-    const plugin = AudioMonitor();
-
+  testWidgets('device listing and native listen calls return typed values', (
+    _,
+  ) async {
     try {
-      final inputs = await plugin.getInputDevices();
-      final outputs = await plugin.getOutputDevices();
-      final state = await plugin.getState();
+      final inputs = await AudioMonitor.getInputDevices();
+      final outputs = await AudioMonitor.getOutputDevices();
 
-      expect(inputs, isA<List<AudioMonitorDevice>>());
-      expect(outputs, isA<List<AudioMonitorDevice>>());
-      expect(state, isA<AudioMonitorState>());
+      expect(inputs, isA<List<AudioInputDevice>>());
+      expect(outputs, isA<List<AudioOutputDevice>>());
+
+      if (inputs.isNotEmpty) {
+        final configuration = await AudioMonitor.getNativeListenConfiguration(
+          inputDeviceId: inputs.first.id,
+        );
+        expect(configuration, isA<NativeListenConfiguration>());
+      }
     } on AudioMonitorException catch (error) {
       expect(
         error.code,
         anyOf(
-          AudioMonitorErrorCode.platformNotSupported,
+          AudioMonitorErrorCode.unsupportedPlatform,
           AudioMonitorErrorCode.permissionDenied,
-          AudioMonitorErrorCode.nativeAudioError,
+          AudioMonitorErrorCode.listenConfigurationUnavailable,
+          AudioMonitorErrorCode.listenConfigurationUnsupported,
+          AudioMonitorErrorCode.nativeWindowsApiFailed,
         ),
       );
     }

@@ -1,28 +1,34 @@
 enum AudioMonitorErrorCode {
-  deviceNotFound,
+  inputDeviceNotFound,
+  outputDeviceNotFound,
+  deviceNotActive,
+  listenConfigurationUnavailable,
+  listenConfigurationUnsupported,
   permissionDenied,
-  monitoringAlreadyActive,
-  monitoringNotActive,
-  platformNotSupported,
-  nativeAudioError;
+  nativeWindowsApiFailed,
+  unsupportedPlatform;
 
   static AudioMonitorErrorCode fromValue(String value) {
     switch (value) {
-      case 'deviceNotFound':
-        return AudioMonitorErrorCode.deviceNotFound;
+      case 'inputDeviceNotFound':
+        return AudioMonitorErrorCode.inputDeviceNotFound;
+      case 'outputDeviceNotFound':
+        return AudioMonitorErrorCode.outputDeviceNotFound;
+      case 'deviceNotActive':
+        return AudioMonitorErrorCode.deviceNotActive;
+      case 'listenConfigurationUnavailable':
+        return AudioMonitorErrorCode.listenConfigurationUnavailable;
+      case 'listenConfigurationUnsupported':
+        return AudioMonitorErrorCode.listenConfigurationUnsupported;
       case 'permissionDenied':
         return AudioMonitorErrorCode.permissionDenied;
-      case 'monitoringAlreadyActive':
-        return AudioMonitorErrorCode.monitoringAlreadyActive;
-      case 'monitoringNotActive':
-        return AudioMonitorErrorCode.monitoringNotActive;
-      case 'platformNotSupported':
-        return AudioMonitorErrorCode.platformNotSupported;
-      case 'nativeAudioError':
-        return AudioMonitorErrorCode.nativeAudioError;
+      case 'nativeWindowsApiFailed':
+        return AudioMonitorErrorCode.nativeWindowsApiFailed;
+      case 'unsupportedPlatform':
+        return AudioMonitorErrorCode.unsupportedPlatform;
     }
 
-    return AudioMonitorErrorCode.nativeAudioError;
+    return AudioMonitorErrorCode.nativeWindowsApiFailed;
   }
 }
 

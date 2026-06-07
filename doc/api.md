@@ -1,72 +1,56 @@
 # API
 
-## Main Class
-
-```dart
-final monitor = AudioMonitor();
-```
-
 ## Device Queries
 
 ```dart
-final inputs = await monitor.getInputDevices();
-final outputs = await monitor.getOutputDevices();
+final inputs = await AudioMonitor.getInputDevices();
+final outputs = await AudioMonitor.getOutputDevices();
 ```
 
-## Start And Stop
+## Native Listen Configuration
 
 ```dart
-await monitor.start(
+final configuration = await AudioMonitor.getNativeListenConfiguration(
+  inputDeviceId: input.id,
+);
+```
+
+## Enable And Disable
+
+```dart
+await AudioMonitor.enableNativeListen(
   inputDeviceId: input.id,
   outputDeviceId: output.id,
 );
 
-await monitor.stop();
+await AudioMonitor.disableNativeListen(
+  inputDeviceId: input.id,
+);
 ```
 
-## Mute Control
+## Change Output Device
 
 ```dart
-await monitor.mute();
-await monitor.unmute();
-
-final muted = await monitor.isMuted();
+await AudioMonitor.setNativeListenOutputDevice(
+  inputDeviceId: input.id,
+  outputDeviceId: AudioMonitor.defaultOutputDeviceId,
+);
 ```
 
-## Volume Control
+`AudioMonitor.defaultOutputDeviceId` tells Windows to use the current default playback device when the endpoint property store accepts that mode.
 
-```dart
-await monitor.setVolume(0.5);
-final volume = await monitor.getVolume();
-```
+## Data Models
 
-`setVolume()` accepts values between `0.0` and `1.0`.
+`AudioInputDevice` and `AudioOutputDevice` include:
 
-The configured volume can be set before `start()`, and that value will be used when monitoring begins.
+- `id`
+- `name`
+- `isDefault`
+- `state`
 
-## State
+`NativeListenConfiguration` includes:
 
-```dart
-final state = await monitor.getState();
-```
-
-`AudioMonitorState` includes:
-
-- `isMonitoring`
-- `isMuted`
-- `volume`
-- `inputDeviceId`
+- `enabled`
 - `outputDeviceId`
-
-## Errors
-
-Native failures are surfaced as `AudioMonitorException`.
-
-Available error codes:
-
-- `deviceNotFound`
-- `permissionDenied`
-- `monitoringAlreadyActive`
-- `monitoringNotActive`
-- `platformNotSupported`
-- `nativeAudioError`
+- `outputDeviceName`
+- `usesDefaultOutputDevice`
